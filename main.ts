@@ -3,7 +3,8 @@ import * as github from '@actions/github';
 import AdmZip from 'adm-zip';
 import * as pathname from 'path';
 import * as fs from 'fs';
-import axios from 'axios';
+import * as https from 'https';
+import * as http from 'http';
 
 interface Artifact {
   id: number;
@@ -21,9 +22,19 @@ function getLatest(artifacts: Artifact[]): Artifact {
   });
 }
 
-async function get(url: string) {
-  const response = await axios.get(url, { responseType: 'arraybuffer' });
-  return response.data;
+async function get(url: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith('https') ? https : http;
+    client.get(url, (res) => {
+      if (res.statusCode && res.statusCode >= 400) {
+        reject(new Error(`Failed to get '${url}' (${res.statusCode})`));
+        return;
+      }
+      const data: Buffer[] = [];
+      res.on('data', (chunk) => data.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(data)));
+    }).on('error', reject);
+  });
 }
 
 function formatBytes(bytes: number): string {
