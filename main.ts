@@ -1,25 +1,32 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { components } from '@octokit/openapi-types';
 import AdmZip from 'adm-zip';
 import * as pathname from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
 import * as http from 'http';
 
-interface Artifact {
-  id: number;
-  name: string;
-  size_in_bytes: number;
-  updated_at: string;
-  expired: boolean;
-}
+type Artifact = components["schemas"]["artifact"];
 
 function getLatest(artifacts: Artifact[]): Artifact {
   return artifacts.reduce((prev, cur, index) => {
-    const prevDate = new Date(prev.updated_at);
-    const curDate = new Date(cur.updated_at);
+    const prevDate = new Date(prev.updated_at ?? '');
+    const curDate = new Date(cur.updated_at ?? '');
     return curDate > prevDate && index ? cur : prev;
   });
+}
+
+function groupAndGetLatestArtifacts(artifacts: Artifact[]): Artifact[] {
+  const grouped: Record<string, Artifact[]> = {};
+  for (const artifact of artifacts) {
+    if (!artifact.name) continue;
+    if (!grouped[artifact.name]) {
+      grouped[artifact.name] = [];
+    }
+    grouped[artifact.name].push(artifact);
+  }
+  return Object.values(grouped).map((group) => getLatest(group));
 }
 
 async function get(url: string): Promise<Buffer> {
@@ -50,7 +57,7 @@ const downloadArtifact = async (): Promise<void> => {
     // required
     const token: string = core.getInput("github_token", { required: true });
     const [owner, repo]: string[] = core.getInput("repo", { required: true }).split("/");
-    
+
     // optional
     let path: string = core.getInput("path", { required: false });
     if (!path) {
@@ -62,8 +69,8 @@ const downloadArtifact = async (): Promise<void> => {
 
     const client = github.getOctokit(token);
 
-    console.log('input', path, artifactName, latest);
-    console.log("==> Repo:", owner + "/" + repo);
+    core.info(`input ${path} ${artifactName} ${latest}`);
+    core.info(`==> Repo: ${owner}/${repo}`);
 
     const artifactsEndpoint = "GET /repos/:owner/:repo/actions/artifacts";
     const artifactsEndpointParams = {
@@ -82,37 +89,30 @@ const downloadArtifact = async (): Promise<void> => {
     }
 
     if (latest && artifacts.length) {
-      console.log('Get latest artifact');
+      core.info('Get latest artifact');
       const latestArtifact = getLatest(artifacts);
       if (latestArtifact) {
-        console.log('Latest artifact', latestArtifact);
+        core.info(`Latest artifact: ${latestArtifact.name}`);
         artifacts = [latestArtifact];
       }
     }
 
     if (artifacts.length) {
-      const grouped: Record<string, Artifact[]> = {};
-      for (const artifact of artifacts) {
-        if (!grouped[artifact.name]) {
-          grouped[artifact.name] = [];
-        }
-        grouped[artifact.name].push(artifact);
-      }
-      artifacts = Object.values(grouped).map((group) => getLatest(group));
+      artifacts = groupAndGetLatestArtifacts(artifacts);
     }
 
-    console.log('Artifacts', artifacts);
+    core.info(`Artifacts: ${JSON.stringify(artifacts, null, 2)}`);
 
     if (artifacts.length) {
-      console.log("==> Found", artifacts.length, "artifacts");
+      core.info(`==> Found ${artifacts.length} artifacts`);
       core.setOutput('found-artifact', true);
       core.setOutput('path', pathname.resolve(path));
 
       for (const artifact of artifacts) {
-        console.log("==> Artifact:", artifact.id);
+        core.info(`==> Artifact: ${artifact.id}`);
 
-        const size = formatBytes(artifact.size_in_bytes);
-        console.log("==> Downloading:", artifact.name + ".zip", `(${size})`);
+        const size = formatBytes(artifact.size_in_bytes ?? 0);
+        core.info(`==> Downloading: ${artifact.name}.zip (${size})`);
 
         const { url } = await client.rest.actions.downloadArtifact({
           owner: owner,
@@ -123,25 +123,25 @@ const downloadArtifact = async (): Promise<void> => {
 
         const zipFileBuffer = await get(url);
 
-        const dir = artifactName ? path : pathname.join(path, artifact.name);
-        fs.mkdirSync(dir, { recursive: true });
+        const dir = artifactName ? path : pathname.join(path, artifact.name ?? "artifact");
+        await fs.promises.mkdir(dir, { recursive: true });
 
         const adm = new AdmZip(Buffer.from(zipFileBuffer));
         adm.getEntries().forEach((entry) => {
           const action = entry.isDirectory ? "creating" : "inflating";
           const filepath = pathname.join(dir, entry.entryName);
-          console.log(`  ${action}: ${filepath}`);
+          core.info(`  ${action}: ${filepath}`);
         });
 
         adm.extractAllTo(dir, true);
       }
     } else {
-      console.log("No artifacts found");
+      core.info("No artifacts found");
       core.setOutput('found-artifact', false);
       core.setOutput('path', '');
     }
   } catch (error) {
-    core.setFailed((error as Error).message);
+    core.setFailed(`Download failed: ${(error as Error).message}`);
   }
 }
 
