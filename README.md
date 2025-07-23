@@ -6,7 +6,7 @@ An action that downloads and extracts uploaded artifact by name. Download artifa
 
 ```yaml
 - name: Download artifact
-  uses: aochmann/actions-download-artifact@1.0.0
+  uses: luizfernandow/actions-download-artifact@main
   with:
     # Optional, GitHub token
     github_token: ${{secrets.GITHUB_TOKEN}}
