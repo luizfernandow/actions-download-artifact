@@ -3,12 +3,8 @@ name: Download
 on:
   push:
     branches:
-      - master
-      - develop
+      - main
   pull_request:
-
-env:
-  NODE_VERSION: 20.x
 
 jobs:
   wait:
@@ -21,12 +17,12 @@ jobs:
     needs: wait
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set Node.js version
-        uses: actions/setup-node@v3
+      - name: Set Node
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{env.NODE_VERSION}}
+          node-version-file: '.nvmrc'
 
       - name: npm install
         run: npm install
@@ -45,12 +41,12 @@ jobs:
     needs: wait
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set Node.js 12.x
-        uses: actions/setup-node@v3
+      - name: Set Node
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{env.NODE_VERSION}}
+          node-version-file: '.nvmrc'
 
       - name: npm install
         run: npm install
@@ -69,12 +65,12 @@ jobs:
     needs: wait
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set Node.js 12.x
-        uses: actions/setup-node@v3
+      - name: Set Node
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{env.NODE_VERSION}}
+          node-version-file: '.nvmrc'
 
       - name: npm install
         run: npm install
