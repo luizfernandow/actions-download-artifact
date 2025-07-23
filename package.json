@@ -1,23 +1,23 @@
 {
   "name": "action-download-artifact",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "author": {
-    "name": "Adrian Ochmann"
+    "name": "luizfernandow"
   },
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {
-    "build": "rm -r ./dist; yarn ncc build main.js -o dist"
+    "build": "rm -r ./dist; npx ncc build main.ts -o dist --minify"
   },
   "dependencies": {
-    "@actions/core": "^1.10.0",
-    "@actions/github": "^5.1.1",
-    "adm-zip": "^0.5.9",
-    "filesize": "^10.0.5",
-    "lodash": "^4.17.21",
-    "moment": "^2.29.4"
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "adm-zip": "^0.5.16"
   },
   "devDependencies": {
-    "@vercel/ncc": "^0.34.0"
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^20",
+    "@vercel/ncc": "^0.38.3",
+    "typescript": "^5.8.3"
   }
 }
