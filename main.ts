@@ -9,9 +9,6 @@ import * as http from 'http';
 
 type Artifact = components["schemas"]["artifact"];
 
-/**
- * Returns the latest artifact from a list based on updated_at.
- */
 function getLatest(artifacts: Artifact[]): Artifact {
   return artifacts.reduce((prev, cur, index) => {
     const prevDate = new Date(prev.updated_at ?? '');
@@ -20,9 +17,6 @@ function getLatest(artifacts: Artifact[]): Artifact {
   });
 }
 
-/**
- * Groups artifacts by name and returns the latest from each group.
- */
 function groupAndGetLatestArtifacts(artifacts: Artifact[]): Artifact[] {
   const grouped: Record<string, Artifact[]> = {};
   for (const artifact of artifacts) {
@@ -62,11 +56,7 @@ const downloadArtifact = async (): Promise<void> => {
   try {
     // required
     const token: string = core.getInput("github_token", { required: true });
-    const repoInput = core.getInput("repo", { required: true });
-    const [owner, repo] = repoInput.split("/");
-    if (!owner || !repo) {
-      throw new Error(`Invalid repo format: "${repoInput}". Expected "owner/repo".`);
-    }
+    const [owner, repo]: string[] = core.getInput("repo", { required: true }).split("/");
 
     // optional
     let path: string = core.getInput("path", { required: false });
